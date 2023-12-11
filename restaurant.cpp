@@ -78,13 +78,6 @@ void simulate(string filename)
 	return;
 }
 
-enum BalanceValue
-{
-	LH = -1,
-	EH = 0,
-	RH = 1
-};
-
 class EncodingNode
 {
 public:
@@ -93,24 +86,23 @@ public:
 	int priority;
 	EncodingNode* left;
 	EncodingNode* right;
-	BalanceValue balance;
 	bool containChar;
 	EncodingNode(char, int, int);
-	EncodingNode(char, int, int, EncodingNode*, EncodingNode*, BalanceValue, bool);
+	EncodingNode(char, int, int, EncodingNode*, EncodingNode*, bool);
+	int calculateBalanceFactor(EncodingNode*);
 	friend class Huffman_AVL_Tree;
 };
 
 class Huffman_AVL_Tree
 {
 private:
-	void balanceTree();
-	void rotateLeft();
-	void rotateRight();
-	void leftBalance();
-	void rightBalance();
-
+	void rotateLeft(EncodingNode*&);
+	void rotateRight(EncodingNode*&);
+	void leftBalance(EncodingNode*&);
+	void rightBalance(EncodingNode*&);
+	EncodingNode* findUnbalancedNode(EncodingNode*);
 public:
-
+	void balanceTree(EncodingNode*);
 };
 
 class Customer
@@ -212,11 +204,6 @@ void Customer::encodingHuffmanAVL()
 {
 	// create a vector of EncodingNode* to store the list of character using for initialize the priority queue
 	vector<EncodingNode*> listNode;
-	//for (int i = 0; i < listOfChar.size(); i++)
-	//{
-	//	EncodingNode* node = new EncodingNode(listOfChar[i].first, listOfChar[i].second, i);
-	//	listNode.push_back(node);
-	//}
 	priority_queue<EncodingNode*, vector<EncodingNode*>, Comparator> pq(listNode.begin(), listNode.end());
 	for (int i = 0; i < listOfChar.size(); i++)
 	{
@@ -224,6 +211,7 @@ void Customer::encodingHuffmanAVL()
 		pq.push(node);
 	}
 	int countNewNode = 0;
+	Huffman_AVL_Tree checkTree;
 
 	while (pq.size() > 1)
 	{
@@ -231,8 +219,8 @@ void Customer::encodingHuffmanAVL()
 		pq.pop();
 		EncodingNode* node2 = pq.top();
 		pq.pop();
-		// Check the balance of two tree from node1 and node2 (This part will be implemented later)
-		EncodingNode* newNode = new EncodingNode('0', node1->freq + node2->freq, listOfChar.size() + countNewNode++, node1, node2, EH, false);
+		EncodingNode* newNode = new EncodingNode('0', node1->freq + node2->freq, listOfChar.size() + countNewNode++, node1, node2, false);
+		checkTree.balanceTree(newNode);
 		// Then balance the tree of newNode (This part will be implemented later)
 		pq.push(newNode);
 	}
@@ -338,24 +326,70 @@ SukunaRestaurant::SukunaRestaurant(int size) : MAXSIZE(size)
 
 /* HUFFMAN AVL TREE */
 
-void Huffman_AVL_Tree::balanceTree()
+void Huffman_AVL_Tree::balanceTree(EncodingNode* root)
 {
+	// check if the tree is balanced
+	int balanceFactor = root->calculateBalanceFactor(root);
+	int countRotation = 0;
+	while (balanceFactor != 0 && countRotation < 3)
+	{
+		if (balanceFactor > 1)
+		{
+			leftBalance(root);
+		}
+		else if (balanceFactor < -1)
+		{
+			rightBalance(root);
+		}
+		countRotation++;
+	}
 }
 
-void Huffman_AVL_Tree::rotateLeft()
+void Huffman_AVL_Tree::rotateLeft(EncodingNode*& root)
 {
+	EncodingNode* newRoot = root->right;
+	root->right = newRoot->left;
+	newRoot->left = root;
+	root = newRoot;
 }
 
-void Huffman_AVL_Tree::rotateRight()
+void Huffman_AVL_Tree::rotateRight(EncodingNode*& root)
 {
+	EncodingNode* newRoot = root->left;
+	root->left = newRoot->right;
+	newRoot->right = root;
+	root = newRoot;
 }
 
-void Huffman_AVL_Tree::leftBalance()
+void Huffman_AVL_Tree::leftBalance(EncodingNode*& root)
 {
+	if (root->calculateBalanceFactor(root->left) > 0)
+	{
+		rotateLeft(root);
+	}
+	else
+	{
+		rotateRight(root->left);
+		rotateLeft(root);
+	}
 }
 
-void Huffman_AVL_Tree::rightBalance()
+void Huffman_AVL_Tree::rightBalance(EncodingNode*& root)
 {
+	if (root->calculateBalanceFactor(root->right) < 0)
+	{
+		rotateRight(root);
+	}
+	else
+	{
+		rotateLeft(root->right);
+		rotateRight(root);
+	}
+}
+
+EncodingNode* Huffman_AVL_Tree::findUnbalancedNode(EncodingNode*)
+{
+	return nullptr;
 }
 
 /* ENCODING NODE */
@@ -364,13 +398,22 @@ EncodingNode::EncodingNode(char character, int freq, int prior) : c(character), 
 {
 	left = nullptr;
 	right = nullptr;
-	balance = EH;
 	containChar = true;
 }
 
-EncodingNode::EncodingNode(char character, int freq, int prior, EncodingNode* l, EncodingNode* r, BalanceValue b, bool isContain) :
-	c(character), freq(freq), priority(prior), left(l), right(r), balance(b), containChar(isContain)
+EncodingNode::EncodingNode(char character, int freq, int prior, EncodingNode* l, EncodingNode* r, bool isContain) :
+	c(character), freq(freq), priority(prior), left(l), right(r), containChar(isContain)
 {
+}
+
+int EncodingNode::calculateBalanceFactor(EncodingNode* node)
+{
+	if (node == nullptr)
+		return 0;
+	return calculateBalanceFactor(node->left) - calculateBalanceFactor(node->right);
+	// left high -> positive
+	// right high -> negative
+	// balanced -> 0
 }
 
 /* COMPARATOR */
