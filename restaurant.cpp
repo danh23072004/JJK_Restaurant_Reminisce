@@ -90,6 +90,7 @@ public:
 	EncodingNode(char, int, int);
 	EncodingNode(char, int, int, EncodingNode*, EncodingNode*, bool);
 	int calculateBalanceFactor(EncodingNode*);
+	int calculateHeight(EncodingNode*);
 	friend class Huffman_AVL_Tree;
 };
 
@@ -98,11 +99,11 @@ class Huffman_AVL_Tree
 private:
 	void rotateLeft(EncodingNode*&);
 	void rotateRight(EncodingNode*&);
-	void leftBalance(EncodingNode*&);
-	void rightBalance(EncodingNode*&);
+	void leftBalance(EncodingNode*&, int&);
+	void rightBalance(EncodingNode*&, int&);
 	EncodingNode* findUnbalancedNode(EncodingNode*);
 public:
-	void balanceTree(EncodingNode*);
+	void balanceTree(EncodingNode*, int&);
 };
 
 class Customer
@@ -118,10 +119,11 @@ private:
 	bool compareFreq(const std::pair<char, int> a, const std::pair<char, int> b);
 	bool compareEncodingNode(const EncodingNode* a, const EncodingNode* b);
 	void encodingHuffmanAVL();
+	void encodeToBinary();
 public:
 	int getID();
 	Customer(string);
-	string getEncodedName();
+	string getEncodedBinaryName();
 	
 };
 
@@ -211,19 +213,27 @@ void Customer::encodingHuffmanAVL()
 		pq.push(node);
 	}
 	int countNewNode = 0;
+	int countRotation;
 	Huffman_AVL_Tree checkTree;
 
 	while (pq.size() > 1)
 	{
+		countRotation = 0;
 		EncodingNode* node1 = pq.top();
 		pq.pop();
 		EncodingNode* node2 = pq.top();
 		pq.pop();
 		EncodingNode* newNode = new EncodingNode('0', node1->freq + node2->freq, listOfChar.size() + countNewNode++, node1, node2, false);
-		checkTree.balanceTree(newNode);
+		checkTree.balanceTree(newNode, countRotation);
 		// Then balance the tree of newNode (This part will be implemented later)
 		pq.push(newNode);
 	}
+	encodeToBinary();
+}
+
+void Customer::encodeToBinary()
+{
+
 }
 
 vector<pair<char, int>> Customer::generateOriginalName(string name)
@@ -270,7 +280,7 @@ Customer::Customer(string name) : originalName(name)
 	encodingHuffmanAVL();
 }
 
-string Customer::getEncodedName()
+string Customer::getEncodedBinaryName()
 {
 	return encodedName;
 }
@@ -326,22 +336,34 @@ SukunaRestaurant::SukunaRestaurant(int size) : MAXSIZE(size)
 
 /* HUFFMAN AVL TREE */
 
-void Huffman_AVL_Tree::balanceTree(EncodingNode* root)
+void Huffman_AVL_Tree::balanceTree(EncodingNode* root, int& countRotation)
 {
 	// check if the tree is balanced
-	int balanceFactor = root->calculateBalanceFactor(root);
-	int countRotation = 0;
-	while (balanceFactor != 0 && countRotation < 3)
+	if (countRotation > 3)
 	{
-		if (balanceFactor > 1)
-		{
-			leftBalance(root);
-		}
-		else if (balanceFactor < -1)
-		{
-			rightBalance(root);
-		}
-		countRotation++;
+		return;
+	}
+	int leftHeight = root->calculateHeight(root->left);
+	int rightHeight = root->calculateHeight(root->right);
+	int balanceFactor = leftHeight - rightHeight;
+	if (leftHeight == 0 && rightHeight == 0)
+	{
+		return;
+	}
+	if (balanceFactor >= -1 && balanceFactor <= 1)
+	{
+		if (leftHeight > 0)
+			balanceTree(root->left, countRotation);
+		if (rightHeight > 0)
+			balanceTree(root->right, countRotation);
+	}
+	else if (balanceFactor > 1)
+	{
+		rightBalance(root, countRotation);
+	}
+	else if (balanceFactor < -1)
+	{
+		leftBalance(root, countRotation);
 	}
 }
 
@@ -361,38 +383,59 @@ void Huffman_AVL_Tree::rotateRight(EncodingNode*& root)
 	root = newRoot;
 }
 
-void Huffman_AVL_Tree::leftBalance(EncodingNode*& root)
+void Huffman_AVL_Tree::leftBalance(EncodingNode*& root, int& countRotation)
 {
-	if (root->calculateBalanceFactor(root->left) > 0)
+	int balanceFactor = root->calculateBalanceFactor(root->right);
+	if (balanceFactor < 0)
 	{
 		rotateLeft(root);
-	}
+	}	
 	else
 	{
-		rotateRight(root->left);
+		rotateRight(root->right);
 		rotateLeft(root);
 	}
+	countRotation++;
 }
 
-void Huffman_AVL_Tree::rightBalance(EncodingNode*& root)
+void Huffman_AVL_Tree::rightBalance(EncodingNode*& root, int& countRotation)
 {
-	if (root->calculateBalanceFactor(root->right) < 0)
+	int balanceFactor = root->calculateBalanceFactor(root->left);
+	if (balanceFactor > 0)
 	{
 		rotateRight(root);
 	}
 	else
 	{
-		rotateLeft(root->right);
+		rotateLeft(root->left);
 		rotateRight(root);
 	}
+	countRotation++;
 }
+
+/* ENCODING NODE */
 
 EncodingNode* Huffman_AVL_Tree::findUnbalancedNode(EncodingNode*)
 {
 	return nullptr;
 }
 
-/* ENCODING NODE */
+int EncodingNode::calculateBalanceFactor(EncodingNode* node)
+{
+	int leftHeight = calculateHeight(node->left);
+	int rightHeight = calculateHeight(node->right);
+	return leftHeight - rightHeight;
+	// < 0 -> right heavy
+	// > 0 -> left heavy
+}
+
+int EncodingNode::calculateHeight(EncodingNode* node)
+{
+	if (node == nullptr)
+		return 0;
+	else
+		return max(calculateHeight(node->left), calculateHeight(node->right)) + 1;
+}
 
 EncodingNode::EncodingNode(char character, int freq, int prior) : c(character), freq(freq), priority(prior)
 {
@@ -406,15 +449,6 @@ EncodingNode::EncodingNode(char character, int freq, int prior, EncodingNode* l,
 {
 }
 
-int EncodingNode::calculateBalanceFactor(EncodingNode* node)
-{
-	if (node == nullptr)
-		return 0;
-	return calculateBalanceFactor(node->left) - calculateBalanceFactor(node->right);
-	// left high -> positive
-	// right high -> negative
-	// balanced -> 0
-}
 
 /* COMPARATOR */
 
