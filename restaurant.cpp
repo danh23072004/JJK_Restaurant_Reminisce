@@ -3,7 +3,7 @@
 class Command
 {
 public:
-	void LAPSE(string name);
+	void LAPSE(string name, int);
 	void KOKUSEN();
 	void KEITEIKEN(int num);
 	void HAND();
@@ -33,13 +33,15 @@ void IO::writeOutput()
 void process(string command, string argument)
 {
 	Command* cmd = new Command();
+	int indexCustomer = 0;
 	if (command == "MAXSIZE")
 	{
 
 	}
 	if (command == "LAPSE")
 	{
-		cmd->LAPSE(argument);
+		cmd->LAPSE(argument, indexCustomer);
+		indexCustomer++;
 	}
 	else if (command == "KOKUSEN")
 	{
@@ -102,13 +104,11 @@ private:
 	static void rotateRight(EncodingNode*&);
 	static void leftBalance(EncodingNode*&, int&);
 	static void rightBalance(EncodingNode*&, int&);
-	EncodingNode* findUnbalancedNode(EncodingNode*);
-	static string findBinaryPath(EncodingNode*&, char);
 	static string binToDec(string);
 	static vector<string> createMapChar(EncodingNode*&);
 	static void encodeAllChar(EncodingNode*&, vector<char>&, vector<string>&);
 public:
-	static void balanceTree(EncodingNode*, int&);
+	static void balanceTree(EncodingNode*&, int&);
 	static string encode(EncodingNode*&, string);
 };
 
@@ -117,7 +117,7 @@ class Customer
 private:
 	int ID;
 	string originalName;
-	string encodedNameBinary;
+	string encodedNameBinToDec;
 	string encodedNameCaesar;
 	vector<pair<char, int>> listOfChar;
 	vector<pair<char, int>> generateOriginalName(string name);
@@ -127,7 +127,7 @@ private:
 	string generateCaesarName(string name, vector<pair<char, int>>&);
 public:
 	int getID();
-	Customer(string);
+	Customer(string, int);
 	string getEncodedBinaryName();
 	
 };
@@ -156,10 +156,12 @@ public:
 
 /* COMMAND */
 
-void Command::LAPSE(string name)
+void Command::LAPSE(string name, int ID)
 {
-	Customer* customer = new Customer(name);
-
+	if (name.size() >= 3)
+	{
+		Customer* customer = new Customer(name, ID);
+	}
 }
 
 void Command::KOKUSEN()
@@ -226,7 +228,7 @@ void Customer::encodingHuffmanAVL()
 		pq.push(newNode);
 	}
 	EncodingNode* rootHuffmanAVL = pq.top(); // this is a tree
-	encodedNameBinary = Huffman_AVL_Tree::encode(rootHuffmanAVL, this->encodedNameCaesar);
+	encodedNameBinToDec = Huffman_AVL_Tree::encode(rootHuffmanAVL, this->encodedNameCaesar);
 }
 string Customer::generateCaesarName(string name, vector<pair<char, int>>&)
 {
@@ -278,9 +280,8 @@ int Customer::getID()
 	return ID;
 }
 
-Customer::Customer(string name) : originalName(name)
+Customer::Customer(string name, int ID) : originalName(name), ID(ID)
 {
-	
 	// Create a vector listchar contains frequency of each character in originalName
 	listOfChar = generateOriginalName(originalName);
 	// Encoding the name using Caesar Cipher
@@ -305,6 +306,7 @@ void Customer::encodingCaesar(vector<pair<char, int>>& listchar)
 	vector<pair<char,int>> newCustomerName;
 	char newChar;
 	int shift = 0;
+	bool isContain = false;
 	for (int i = 0; i < listchar.size(); i++)
 	{
 		shift = listchar[i].second % 26;
@@ -326,10 +328,14 @@ void Customer::encodingCaesar(vector<pair<char, int>>& listchar)
 			if (p.first == newChar)
 			{
 				p.second += listchar[i].second;
+				isContain = true;
 				break;
 			}
 		}
-		newCustomerName.push_back(make_pair(newChar, listchar[i].second));
+		if (!isContain)
+		{
+			newCustomerName.push_back(make_pair(newChar, listchar[i].second));
+		}
 	}
 	listchar = newCustomerName;
 }
@@ -350,7 +356,7 @@ SukunaRestaurant::SukunaRestaurant(int size) : MAXSIZE(size)
 
 /* HUFFMAN AVL TREE */
 
-void Huffman_AVL_Tree::balanceTree(EncodingNode* root, int& countRotation)
+void Huffman_AVL_Tree::balanceTree(EncodingNode*& root, int& countRotation)
 {
 	// check if the tree is balanced
 	if (countRotation > 3)
@@ -421,7 +427,7 @@ void Huffman_AVL_Tree::rotateRight(EncodingNode*& root)
 void Huffman_AVL_Tree::leftBalance(EncodingNode*& root, int& countRotation)
 {
 	int balanceFactor = root->calculateBalanceFactor(root->right);
-	if (balanceFactor < 0)
+	if (balanceFactor <= 0)
 	{
 		rotateLeft(root);
 	}	
@@ -436,7 +442,7 @@ void Huffman_AVL_Tree::leftBalance(EncodingNode*& root, int& countRotation)
 void Huffman_AVL_Tree::rightBalance(EncodingNode*& root, int& countRotation)
 {
 	int balanceFactor = root->calculateBalanceFactor(root->left);
-	if (balanceFactor > 0)
+	if (balanceFactor >= 0)
 	{
 		rotateRight(root);
 	}
@@ -449,21 +455,6 @@ void Huffman_AVL_Tree::rightBalance(EncodingNode*& root, int& countRotation)
 }
 
 /* ENCODING NODE */
-
-EncodingNode* Huffman_AVL_Tree::findUnbalancedNode(EncodingNode*)
-{
-	return nullptr;
-}
-
-string Huffman_AVL_Tree::findBinaryPath(EncodingNode*& root, char c)
-{
-	string binaryPath = "";
-	if (root->c != '0')
-	{
-
-	}
-	return "";
-}
 
 string Huffman_AVL_Tree::binToDec(string input)
 {
@@ -487,7 +478,7 @@ vector<string> Huffman_AVL_Tree::createMapChar(EncodingNode*& root)
 
 void Huffman_AVL_Tree::encodeAllChar(EncodingNode*& root, vector<char>&path, vector<string> &map)
 {
-	if (root->left != nullptr && root->right != nullptr)
+	if (root->left == nullptr && root->right == nullptr)
 	{
 		string decodePath(path.begin(), path.end());
 		if (root->c >= 'a' && root->c <= 'z')
