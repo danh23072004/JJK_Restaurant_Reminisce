@@ -297,7 +297,7 @@ Customer::Customer(string name, int ID) : originalName(name), ID(ID)
 
 string Customer::getEncodedBinaryName()
 {
-	return encodedNameBinary;
+	return encodedNameBinToDec;
 }
 
 void Customer::encodingCaesar(vector<pair<char, int>>& listchar)
